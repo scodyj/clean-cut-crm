@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CCG">
+<meta name="theme-color" content="#E8650A">
+<title>Clean Cut Graphics CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --orange:#E8650A;--orange-light:#FEF0E6;--orange-dark:#B54D08;
+  --bg:#ffffff;--bg2:#f5f5f3;--bg3:#efefed;
+  --text:#1a1a1a;--text2:#666;--text3:#999;
+  --border:#e0e0de;--border2:#d0d0ce;
+  --radius:10px;--radius-sm:7px;
+  --shadow:0 1px 3px rgba(0,0,0,0.08);
+  --safe-bottom:env(safe-area-inset-bottom,20px);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--text);min-height:100vh;padding-bottom:calc(80px + var(--safe-bottom))}
+.app-header{background:var(--bg);border-bottom:1px solid var(--border);padding:16px 20px;position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between}
+.app-title{font-size:18px;font-weight:700;color:var(--orange);letter-spacing:-0.3px}
+.app-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:50;padding-bottom:max(var(--safe-bottom),16px)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 2px 8px;cursor:pointer;border:none;background:none;color:var(--text3);font-size:9px;gap:3px;transition:color 0.15s;min-width:0}
+.nav-item.active{color:var(--orange)}
+.nav-icon{font-size:18px;line-height:1}
+.view{display:none;padding:16px}
+.view.active{display:block}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.metric{background:var(--bg);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.metric-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px}
+.metric-value{font-size:24px;font-weight:700;color:var(--text);letter-spacing:-0.5px}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-title{font-size:15px;font-weight:600;color:var(--text)}
+.btn-add{background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-add:active{background:var(--orange-dark)}
+.card{background:var(--bg);border-radius:var(--radius);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.card-meta{font-size:12px;color:var(--text2);display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.card-notes{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.4}
+.card-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.badge{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-lead{background:#e6f1fb;color:#185fa5}
+.badge-quoted{background:#faeeda;color:#854f0b}
+.badge-active{background:#eaf3de;color:#3b6d11}
+.badge-complete{background:#e1f5ee;color:#0f6e56}
+.badge-archived{background:#f1efe8;color:#5f5e5a}
+.badge-pending{background:#faeeda;color:#854f0b}
+.badge-paid{background:#e1f5ee;color:#0f6e56}
+.badge-overdue{background:#fcebeb;color:#a32d2d}
+.badge-sent{background:#faeeda;color:#854f0b}
+.badge-approved{background:#eaf3de;color:#3b6d11}
+.badge-declined{background:#fcebeb;color:#a32d2d}
+.btn-sm{padding:6px 12px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg);color:var(--text2);cursor:pointer;font-weight:500}
+.btn-sm:active{background:var(--bg2)}
+.btn-sm.primary{background:var(--orange);color:#fff;border-color:var(--orange)}
+.btn-sm.danger{color:#a32d2d;border-color:#f0cccc}
+.btn-sm.success{background:#eaf3de;color:#3b6d11;border-color:#c0dd97}
+.pipe-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.pipe-scroll::-webkit-scrollbar{display:none}
+.pipe-col{min-width:200px;background:var(--bg3);border-radius:var(--radius);padding:10px;flex-shrink:0}
+.pipe-col-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;display:flex;justify-content:space-between}
+.pipe-card{background:var(--bg);border-radius:var(--radius-sm);padding:10px;margin-bottom:6px;cursor:pointer;box-shadow:var(--shadow)}
+.pipe-card:active{opacity:0.8}
+.pipe-name{font-size:13px;font-weight:600;color:var(--text)}
+.pipe-company{font-size:11px;color:var(--text2);margin-top:2px}
+.pipe-value{font-size:13px;color:var(--orange);font-weight:600;margin-top:4px}
+.pipe-total{font-size:11px;color:var(--text3);padding-top:6px;border-top:1px solid var(--border);margin-top:4px}
+.contact-card{background:var(--bg);border-radius:var(--radius);padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.contact-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--orange);flex-shrink:0}
+.contact-name{font-size:15px;font-weight:600;color:var(--text)}
+.contact-company{font-size:12px;color:var(--text2)}
+.contact-detail{font-size:12px;color:var(--text2);display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)}
+.contact-detail:last-of-type{border-bottom:none}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--orange-light);color:var(--orange-dark);display:inline-block;margin:2px 2px 0 0}
+.reminder-item{background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:12px}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.dot-today{background:#e24b4a}
+.dot-soon{background:#ef9f27}
+.dot-upcoming{background:#639922}
+.reminder-body{flex:1}
+.reminder-title{font-size:14px;font-weight:600;color:var(--text)}
+.reminder-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.reminder-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.reminder-date{font-size:11px;color:var(--text3)}
+.search-input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--bg);margin-bottom:14px;color:var(--text)}
+.search-input:focus{outline:none;border-color:var(--orange)}
+.amount-large{font-size:20px;font-weight:700;color:var(--text);margin:6px 0}
+.invoice-row{background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;cursor:pointer}
+.invoice-info{flex:1}
+.invoice-name{font-size:14px;font-weight:600;color:var(--text)}
+.invoice-meta{font-size:11px;color:var(--text2);margin-top:2px}
+.invoice-right{text-align:right;flex-shrink:0}
+.invoice-amount{font-size:15px;font-weight:700;color:var(--text)}
+.expense-row{background:var(--bg);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;cursor:pointer}
+.expense-info{flex:1}
+.expense-name{font-size:14px;font-weight:600;color:var(--text)}
+.expense-meta{font-size:11px;color:var(--text2);margin-top:2px}
+.expense-amount{font-size:15px;font-weight:700;color:#a32d2d;flex-shrink:0}
+.cat-pill{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg3);color:var(--text2);display:inline-block;margin-top:3px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:90vh;overflow-y:auto;padding-bottom:calc(20px + var(--safe-bottom))}
+.modal-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:16px}
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:0.04em}
+.form-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:15px;background:var(--bg);color:var(--text);-webkit-appearance:none}
+.form-input:focus{outline:none;border-color:var(--orange)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+textarea.form-input{resize:none;min-height:80px;line-height:1.4}
+select.form-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions .btn-sm{flex:1;padding:12px;font-size:15px;text-align:center;border-radius:var(--radius)}
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:14px}
+.status-bar{background:var(--orange-light);color:var(--orange-dark);font-size:12px;padding:6px 16px;text-align:center;display:none}
+.status-bar.show{display:block}
+.sync-btn{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:4px}
+.chart-card{background:var(--bg);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.chart-title{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.kpi-card{background:var(--bg);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);text-align:center}
+.kpi-value{font-size:20px;font-weight:700;color:var(--text)}
+.kpi-label{font-size:10px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
+.kpi-sub{font-size:11px;color:var(--orange);font-weight:600;margin-top:2px}
+.month-selector{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
+.month-selector::-webkit-scrollbar{display:none}
+.month-btn{padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.month-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+.funnel-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+.funnel-stage{display:flex;align-items:center;gap:10px}
+.funnel-bar-wrap{flex:1;background:var(--bg3);border-radius:4px;height:28px;overflow:hidden}
+.funnel-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:12px;font-weight:600;color:#fff;transition:width 0.4s ease;min-width:32px}
+.funnel-label{font-size:12px;color:var(--text2);width:60px;text-align:right;flex-shrink:0}
+.funnel-count{font-size:12px;font-weight:600;color:var(--text);width:28px;text-align:right;flex-shrink:0}
+.tab-buttons{display:flex;gap:6px;margin-bottom:14px}
+.tab-btn{padding:7px 14px;border:1px solid var(--border);border-radius:20px;background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer}
+.tab-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+.mileage-result{background:var(--orange-light);border-radius:var(--radius-sm);padding:10px 14px;margin-top:8px;font-size:13px;color:var(--orange-dark)}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <div class="app-title">Clean Cut Graphics</div>
+    <div class="app-sub">Business CRM</div>
+  </div>
+  <button class="sync-btn" onclick="syncAll()">↻</button>
+</div>
+
+<div class="status-bar" id="status-bar"></div>
+
+<div class="view active" id="view-dashboard">
+  <div class="metrics" id="dash-metrics"><div class="loading">Loading...</div></div>
+  <div class="section-header"><span class="section-title">Pipeline overview</span></div>
+  <div id="dash-funnel"></div>
+  <div class="section-header" style="margin-top:16px"><span class="section-title">Recent jobs</span></div>
+  <div id="dash-jobs"></div>
+</div>
+
+<div class="view" id="view-pipeline">
+  <div class="tab-buttons">
+    <button class="tab-btn active" onclick="setPipeTab('active')">Active</button>
+    <button class="tab-btn" onclick="setPipeTab('archive')">Archive</button>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn-add" onclick="openModal('job')">+ Job</button>
+  </div>
+  <div class="pipe-scroll" id="pipeline-board"></div>
+  <div id="archive-list" style="display:none"></div>
+</div>
+
+<div class="view" id="view-contacts">
+  <div class="section-header">
+    <span class="section-title">Contacts</span>
+    <button class="btn-add" onclick="openModal('contact')">+ Contact</button>
+  </div>
+  <input class="search-input" type="search" placeholder="Search contacts..." oninput="filterContacts(this.value)">
+  <div id="contacts-list"></div>
+</div>
+
+<div class="view" id="view-money">
+  <div class="tab-buttons">
+    <button class="tab-btn active" onclick="setMoneyTab('quotes')">Quotes</button>
+    <button class="tab-btn" onclick="setMoneyTab('invoices')">Invoices</button>
+    <button class="tab-btn" onclick="setMoneyTab('expenses')">Expenses</button>
+  </div>
+  <div id="money-content"></div>
+</div>
+
+<div class="view" id="view-analytics">
+  <div id="analytics-content"><div class="loading">Loading analytics...</div></div>
+</div>
+
+<div class="view" id="view-reminders">
+  <div class="section-header">
+    <span class="section-title">Follow-ups</span>
+    <button class="btn-add" onclick="openModal('reminder')">+ Task</button>
+  </div>
+  <div id="reminders-list"></div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard">
+    <span class="nav-icon">⊞</span>Dash
+  </button>
+  <button class="nav-item" onclick="showView('pipeline')" id="nav-pipeline">
+    <span class="nav-icon">◈</span>Jobs
+  </button>
+  <button class="nav-item" onclick="showView('contacts')" id="nav-contacts">
+    <span class="nav-icon">◎</span>People
+  </button>
+  <button class="nav-item" onclick="showView('money')" id="nav-money">
+    <span class="nav-icon">$</span>Money
+  </button>
+  <button class="nav-item" onclick="showView('analytics')" id="nav-analytics">
+    <span class="nav-icon">↗</span>Stats
+  </button>
+  <button class="nav-item" onclick="showView('reminders')" id="nav-reminders">
+    <span class="nav-icon">◷</span>Tasks
+  </button>
+</nav>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content"><div class="modal-handle"></div></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://aaevnbqrqtmlygxdprfj.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZXZuYnFycXRtbHlneGRwcmZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NzY0NDIsImV4cCI6MjA5MTI1MjQ0Mn0.NI7RtLl9JFy6SMeJ66eTHIRkkLfV3FCBq7W4MVoL68o';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const HOME='1420 Fair Ave, Columbus, OH 43205';
+const IRS_RATE=0.70;
+
+let DATA={jobs:[],contacts:[],quotes:[],invoices:[],reminders:[],expenses:[]};
+let pipeTab='active';
+let moneyTab='quotes';
+let analyticsMonth=null;
+let revenueChart=null;
+
+async function syncAll(){
+  showStatus('Syncing...');
+  try{
+    const[j,c,q,i,r,e]=await Promise.all([
+      sb.from('jobs').select('*').order('created_at',{ascending:false}),
+      sb.from('contacts').select('*').order('name'),
+      sb.from('quotes').select('*').order('created_at',{ascending:false}),
+      sb.from('invoices').select('*').order('created_at',{ascending:false}),
+      sb.from('reminders').select('*').eq('done',false).order('date'),
+      sb.from('expenses').select('*').order('date',{ascending:false})
+    ]);
+    DATA.jobs=j.data||[];
+    DATA.contacts=c.data||[];
+    DATA.quotes=q.data||[];
+    DATA.invoices=i.data||[];
+    DATA.reminders=r.data||[];
+    DATA.expenses=e.data||[];
+    renderCurrent();
+    showStatus('Synced ✓',true);
+  }catch(e){showStatus('Sync failed');}
+}
+
+function showStatus(msg,auto=false){
+  const bar=document.getElementById('status-bar');
+  bar.textContent=msg;bar.classList.add('show');
+  if(auto)setTimeout(()=>bar.classList.remove('show'),2000);
+}
+
+function fmt(n){return'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtDate(d){if(!d)return'';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function fmtMonth(d){if(!d)return'';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}
+function initials(name){return(name||'').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2)}
+function badgeClass(s){const m={lead:'badge-lead',quoted:'badge-quoted',active:'badge-active',complete:'badge-complete',archived:'badge-archived',pending:'badge-pending',paid:'badge-paid',overdue:'badge-overdue',sent:'badge-sent',approved:'badge-approved',declined:'badge-declined'};return m[s]||'badge-lead'}
+
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.getElementById('nav-'+v).classList.add('active');
+  renderView(v);
+}
+
+function renderCurrent(){
+  const active=document.querySelector('.view.active');
+  if(active)renderView(active.id.replace('view-',''));
+}
+
+function renderView(v){
+  if(v==='dashboard')renderDashboard();
+  if(v==='pipeline')renderPipeline();
+  if(v==='contacts')renderContacts();
+  if(v==='money')renderMoney();
+  if(v==='analytics')renderAnalytics();
+  if(v==='reminders')renderReminders();
+}
+
+function renderDashboard(){
+  const paid=DATA.invoices.filter(i=>i.status==='paid').reduce((a,b)=>a+(b.amount||0),0);
+  const pipeline=DATA.jobs.filter(j=>j.status==='quoted'||j.status==='active').reduce((a,b)=>a+(b.value||0),0);
+  const open=DATA.jobs.filter(j=>j.status!=='complete'&&j.status!=='archived').length;
+  const today=DATA.reminders.filter(r=>r.priority==='today').length;
+  const totalExp=DATA.expenses.reduce((a,b)=>a+(b.amount||0),0);
+  document.getElementById('dash-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Billed YTD</div><div class="metric-value">${fmt(paid)}</div><div class="metric-sub">Collected</div></div>
+    <div class="metric"><div class="metric-label">Pipeline</div><div class="metric-value">${fmt(pipeline)}</div><div class="metric-sub">Pending</div></div>
+    <div class="metric"><div class="metric-label">Open jobs</div><div class="metric-value">${open}</div><div class="metric-sub">Active + quoted</div></div>
+    <div class="metric"><div class="metric-label">Expenses YTD</div><div class="metric-value">${fmt(totalExp)}</div><div class="metric-sub">All categories</div></div>
+  `;
+  // Funnel
+  const stages=['lead','quoted','active','complete'];
+  const colors={'lead':'#378ADD','quoted':'#EF9F27','active':'#E8650A','complete':'#1D9E75'};
+  const labels={lead:'Lead',quoted:'Quoted',active:'Active',complete:'Done'};
+  const counts={};
+  const vals={};
+  stages.forEach(s=>{
+    const jobs=DATA.jobs.filter(j=>j.status===s);
+    counts[s]=jobs.length;
+    vals[s]=jobs.reduce((a,b)=>a+(b.value||0),0);
+  });
+  const maxCount=Math.max(...Object.values(counts),1);
+  document.getElementById('dash-funnel').innerHTML=`
+    <div class="chart-card">
+      <div class="chart-title">Pipeline funnel</div>
+      <div class="funnel-wrap">
+        ${stages.map(s=>`
+          <div class="funnel-stage">
+            <div class="funnel-label">${labels[s]}</div>
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:${Math.max((counts[s]/maxCount)*100,8)}%;background:${colors[s]}">
+                ${vals[s]?fmt(vals[s]):''}
+              </div>
+            </div>
+            <div class="funnel-count">${counts[s]}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  const recent=DATA.jobs.filter(j=>j.status!=='archived').slice(0,4);
+  document.getElementById('dash-jobs').innerHTML=recent.length?recent.map(j=>`
+    <div class="card" onclick="editRecord('job','${j.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="card-title">${j.name}</div>
+        <span class="badge ${badgeClass(j.status)}">${j.status}</span>
+      </div>
+      <div class="card-meta"><span>${j.company||''}</span>${j.value?`<span>${fmt(j.value)}</span>`:''}</div>
+      ${j.notes?`<div class="card-notes">${j.notes}</div>`:''}
+    </div>`).join(''):'<div class="empty-state">No jobs yet</div>';
+}
+
+function setPipeTab(tab){
+  pipeTab=tab;
+  document.querySelectorAll('#view-pipeline .tab-btn').forEach((b,i)=>{b.classList.toggle('active',i===(tab==='active'?0:1))});
+  renderPipeline();
+}
+
+function renderPipeline(){
+  const board=document.getElementById('pipeline-board');
+  const archList=document.getElementById('archive-list');
+  if(pipeTab==='archive'){
+    board.style.display='none';
+    archList.style.display='block';
+    const archived=DATA.jobs.filter(j=>j.status==='archived');
+    archList.innerHTML=archived.length?archived.map(j=>`
+      <div class="card" onclick="editRecord('job','${j.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="card-title">${j.name}</div>
+          <span class="badge badge-archived">archived</span>
+        </div>
+        <div class="card-meta"><span>${j.company||''}</span>${j.value?`<span>${fmt(j.value)}</span>`:''}<span>${fmtDate(j.date)}</span></div>
+        ${j.notes?`<div class="card-notes">${j.notes}</div>`:''}
+      </div>`).join(''):'<div class="empty-state">No archived jobs</div>';
+    return;
+  }
+  board.style.display='flex';
+  archList.style.display='none';
+  const stages=['lead','quoted','active','complete'];
+  const labels={lead:'Lead',quoted:'Quoted',active:'Active',complete:'Complete'};
+  board.innerHTML=stages.map(stage=>{
+    const jobs=DATA.jobs.filter(j=>j.status===stage);
+    const total=jobs.reduce((a,b)=>a+(b.value||0),0);
+    return`<div class="pipe-col">
+      <div class="pipe-col-title"><span>${labels[stage]}</span><span>${jobs.length}</span></div>
+      ${jobs.map(j=>`<div class="pipe-card" onclick="editRecord('job','${j.id}')">
+        <div class="pipe-name">${j.name}</div>
+        <div class="pipe-company">${j.company||''}</div>
+        ${j.value?`<div class="pipe-value">${fmt(j.value)}</div>`:''}
+      </div>`).join('')}
+      ${total?`<div class="pipe-total">Total: ${fmt(total)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderContacts(filter=''){
+  const list=filter?DATA.contacts.filter(c=>(c.name||'').toLowerCase().includes(filter.toLowerCase())||(c.company||'').toLowerCase().includes(filter.toLowerCase())):DATA.contacts;
+  document.getElementById('contacts-list').innerHTML=list.length?list.map(c=>`
+    <div class="contact-card">
+      <div class="contact-header">
+        <div class="avatar">${initials(c.name)}</div>
+        <div><div class="contact-name">${c.name}</div><div class="contact-company">${c.company||''}</div></div>
+      </div>
+      ${c.role?`<div class="contact-detail"><span>Role</span><span>${c.role}</span></div>`:''}
+      ${c.phone?`<div class="contact-detail"><span>Phone</span><span>${c.phone}</span></div>`:''}
+      ${c.email?`<div class="contact-detail"><span>Email</span><span style="color:var(--orange)">${c.email}</span></div>`:''}
+      ${c.tags&&c.tags.length?`<div style="margin-top:8px">${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
+      ${c.notes?`<div class="card-notes">${c.notes}</div>`:''}
+      <div class="card-actions">
+        <button class="btn-sm" onclick="editRecord('contact','${c.id}')">Edit</button>
+        <button class="btn-sm primary" onclick="quickReminder('${(c.name||'').replace(/'/g,"\\'")}')">+ Task</button>
+      </div>
+    </div>`).join(''):'<div class="empty-state">No contacts found</div>';
+}
+
+function filterContacts(v){renderContacts(v)}
+
+function setMoneyTab(tab){
+  moneyTab=tab;
+  document.querySelectorAll('#view-money .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['quotes','invoices','expenses'][i]===tab);
+  });
+  renderMoney();
+}
+
+function renderMoney(){
+  const el=document.getElementById('money-content');
+  if(moneyTab==='quotes'){
+    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-add" onclick="openModal('quote')">+ Quote</button></div>`+
+    (DATA.quotes.length?DATA.quotes.map(q=>`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div class="card-title">${q.job||''}</div><div style="font-size:11px;color:var(--text3)">${q.ref||''}</div></div>
+          <span class="badge ${badgeClass(q.status)}">${q.status}</span>
+        </div>
+        <div class="card-meta"><span>${q.client||''}</span><span>Valid ${fmtDate(q.valid_through)}</span></div>
+        <div class="amount-large">${fmt(q.amount)}</div>
+        <div class="card-actions">
+          <button class="btn-sm" onclick="updateStatus('quotes','${q.id}','approved')">Approved</button>
+          <button class="btn-sm" onclick="updateStatus('quotes','${q.id}','declined')">Declined</button>
+          <button class="btn-sm primary" onclick="quoteToInvoice('${q.id}')">→ Invoice</button>
+        </div>
+      </div>`).join(''):'<div class="empty-state">No quotes yet</div>');
+  } else if(moneyTab==='invoices'){
+    const total=DATA.invoices.reduce((a,b)=>a+(b.amount||0),0);
+    const paid=DATA.invoices.filter(i=>i.status==='paid').reduce((a,b)=>a+(b.amount||0),0);
+    el.innerHTML=`
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn-add" onclick="openModal('invoice')">+ Invoice</button></div>
+      <div class="metrics" style="margin-bottom:12px">
+        <div class="metric"><div class="metric-label">Invoiced</div><div class="metric-value">${fmt(total)}</div></div>
+        <div class="metric"><div class="metric-label">Outstanding</div><div class="metric-value">${fmt(total-paid)}</div></div>
+      </div>`+
+    (DATA.invoices.length?DATA.invoices.map(inv=>`
+      <div class="invoice-row" onclick="editInvoice('${inv.id}')">
+        <div class="invoice-info">
+          <div class="invoice-name">${inv.job||''}</div>
+          <div class="invoice-meta">${inv.ref||''} · ${inv.client||''} · ${fmtDate(inv.date)}</div>
+        </div>
+        <div class="invoice-right">
+          <div class="invoice-amount">${fmt(inv.amount)}</div>
+          <span class="badge ${badgeClass(inv.status)}" style="margin-top:4px;display:inline-block">${inv.status}</span>
+        </div>
+      </div>`).join(''):'<div class="empty-state">No invoices yet</div>');
+  } else if(moneyTab==='expenses'){
+    const totalExp=DATA.expenses.reduce((a,b)=>a+(b.amount||0),0);
+    const cats={};
+    DATA.expenses.forEach(e=>{cats[e.category]=(cats[e.category]||0)+(e.amount||0)});
+    const catRows=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="color:var(--text2)">${k}</span>
+        <span style="font-weight:600;color:#a32d2d">${fmt(v)}</span>
+      </div>`).join('');
+    el.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <button class="btn-add" onclick="openModal('expense')">+ Expense</button>
+        <button class="btn-sm" onclick="exportExpenses()">Export CSV</button>
+      </div>
+      <div class="chart-card" style="margin-bottom:14px">
+        <div class="chart-title">By category</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;color:var(--text2)">Total YTD</span>
+          <span style="font-size:15px;font-weight:700;color:#a32d2d">${fmt(totalExp)}</span>
+        </div>
+        ${catRows||'<div style="color:var(--text3);font-size:13px">No expenses logged yet</div>'}
+      </div>`+
+    (DATA.expenses.length?DATA.expenses.map(e=>`
+      <div class="expense-row" onclick="editExpense('${e.id}')">
+        <div class="expense-info">
+          <div class="expense-name">${e.description||e.category}</div>
+          <div class="expense-meta">${fmtDate(e.date)} · <span class="cat-pill">${e.category}</span></div>
+        </div>
+        <div class="expense-amount">${fmt(e.amount)}</div>
+      </div>`).join(''):'<div class="empty-state">No expenses yet — add your first one</div>');
+  }
+}
+
+function renderAnalytics(){
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})});
+  }
+  if(!analyticsMonth)analyticsMonth=months[months.length-1].key;
+
+  const selMonth=analyticsMonth;
+  const selJobs=DATA.jobs.filter(j=>(j.created_at||'').startsWith(selMonth));
+  const selInvoices=DATA.invoices.filter(i=>(i.date||'').startsWith(selMonth));
+  const selExpenses=DATA.expenses.filter(e=>(e.date||'').startsWith(selMonth));
+
+  const leads=selJobs.filter(j=>j.status==='lead').length;
+  const quoted=selJobs.filter(j=>['quoted','active','complete'].includes(j.status)).length;
+  const won=selJobs.filter(j=>['active','complete'].includes(j.status)).length;
+  const revenue=selInvoices.filter(i=>i.status==='paid').reduce((a,b)=>a+(b.amount||0),0);
+  const invoiced=selInvoices.reduce((a,b)=>a+(b.amount||0),0);
+  const expenses=selExpenses.reduce((a,b)=>a+(b.amount||0),0);
+  const convRate=selJobs.length?Math.round((won/selJobs.length)*100):0;
+  const quoteRate=selJobs.length?Math.round((quoted/selJobs.length)*100):0;
+
+  // Monthly revenue data for chart
+  const revenueData=months.map(m=>{
+    return DATA.invoices.filter(i=>(i.date||'').startsWith(m.key)&&i.status==='paid').reduce((a,b)=>a+(b.amount||0),0);
+  });
+  const invoicedData=months.map(m=>{
+    return DATA.invoices.filter(i=>(i.date||'').startsWith(m.key)).reduce((a,b)=>a+(b.amount||0),0);
+  });
+
+  document.getElementById('analytics-content').innerHTML=`
+    <div class="month-selector" id="month-sel">
+      ${months.map(m=>`<button class="month-btn${m.key===selMonth?' active':''}" onclick="setAnalyticsMonth('${m.key}')">${m.label}</button>`).join('')}
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-value">${selJobs.length}</div><div class="kpi-label">New jobs</div></div>
+      <div class="kpi-card"><div class="kpi-value">${won}</div><div class="kpi-label">Won</div><div class="kpi-sub">${convRate}% rate</div></div>
+      <div class="kpi-card"><div class="kpi-value">${fmt(revenue)}</div><div class="kpi-label">Collected</div></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-value">${fmt(invoiced)}</div><div class="kpi-label">Invoiced</div></div>
+      <div class="kpi-card"><div class="kpi-value">${fmt(expenses)}</div><div class="kpi-label">Expenses</div></div>
+      <div class="kpi-card"><div class="kpi-value">${fmt(revenue-expenses)}</div><div class="kpi-label">Net</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Revenue — last 6 months</div>
+      <canvas id="revenue-chart" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Pipeline funnel — ${months.find(m=>m.key===selMonth)?.label}</div>
+      <div class="funnel-wrap">
+        ${[['Leads',selJobs.length,'#378ADD'],[`Quoted (${quoteRate}%)`,quoted,'#EF9F27'],[`Won (${convRate}%)`,won,'#E8650A']].map(([label,count,color])=>`
+          <div class="funnel-stage">
+            <div class="funnel-label" style="font-size:11px">${label}</div>
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:${Math.max(selJobs.length?((count/selJobs.length)*100):8,8)}%;background:${color}">${count}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  setTimeout(()=>{
+    const ctx=document.getElementById('revenue-chart');
+    if(!ctx)return;
+    if(revenueChart){revenueChart.destroy();revenueChart=null;}
+    revenueChart=new Chart(ctx,{
+      type:'bar',
+      data:{
+        labels:months.map(m=>m.label),
+        datasets:[
+          {label:'Collected',data:revenueData,backgroundColor:'rgba(232,101,10,0.8)',borderRadius:4},
+          {label:'Invoiced',data:invoicedData,backgroundColor:'rgba(232,101,10,0.2)',borderRadius:4}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString(),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}},x:{ticks:{font:{size:10}},grid:{display:false}}}
+      }
+    });
+  },100);
+}
+
+function setAnalyticsMonth(m){analyticsMonth=m;renderAnalytics();}
+
+function renderReminders(){
+  const order={today:0,soon:1,upcoming:2};
+  const sorted=[...DATA.reminders].sort((a,b)=>(order[a.priority]||2)-(order[b.priority]||2));
+  document.getElementById('reminders-list').innerHTML=sorted.length?sorted.map(r=>`
+    <div class="reminder-item">
+      <div class="dot dot-${r.priority||'upcoming'}"></div>
+      <div class="reminder-body">
+        <div class="reminder-title">${r.title}</div>
+        <div class="reminder-meta">${r.contact||''}${r.notes?' · '+r.notes:''}</div>
+      </div>
+      <div class="reminder-right">
+        <div class="reminder-date">${fmtDate(r.date)}</div>
+        <button class="btn-sm primary" onclick="doneReminder('${r.id}')">Done ✓</button>
+      </div>
+    </div>`).join(''):'<div class="empty-state">All caught up</div>';
+}
+
+async function updateStatus(table,id,status){
+  await sb.from(table).update({status}).eq('id',id);
+  await syncAll();
+}
+
+async function doneReminder(id){
+  await sb.from('reminders').update({done:true}).eq('id',id);
+  DATA.reminders=DATA.reminders.filter(r=>r.id!==id);
+  renderReminders();
+}
+
+async function quoteToInvoice(qid){
+  const q=DATA.quotes.find(q=>q.id===qid);if(!q)return;
+  const ref='CCG-INV-'+String(DATA.invoices.length+1).padStart(3,'0');
+  await sb.from('invoices').insert({ref,client:q.client,job:q.job,amount:q.amount,status:'pending'});
+  await updateStatus('quotes',qid,'approved');
+}
+
+function calcMileage(miles){
+  const roundTrip=miles*2;
+  const cost=roundTrip*IRS_RATE;
+  return{roundTrip:Math.round(roundTrip*10)/10,cost:Math.round(cost*100)/100};
+}
+
+async function getMiles(address){
+  if(!address)return null;
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+    const d=await r.json();
+    if(!d.length)return null;
+    const dest={lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+    const home=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(HOME)}`);
+    const hd=await home.json();
+    if(!hd.length)return null;
+    const orig={lat:parseFloat(hd[0].lat),lon:parseFloat(hd[0].lon)};
+    const R=3959;
+    const dLat=(dest.lat-orig.lat)*Math.PI/180;
+    const dLon=(dest.lon-orig.lon)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(orig.lat*Math.PI/180)*Math.cos(dest.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+    const miles=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    return Math.round(miles*10)/10;
+  }catch{return null;}
+}
+
+function addCalendar(job){
+  const start=job.date?job.date.replace(/-/g,''):'20260101';
+  const title=encodeURIComponent(`CCG: ${job.name}`);
+  const loc=encodeURIComponent(job.address||'');
+  const desc=encodeURIComponent(`${job.company||''} · ${job.contact||''}\n${job.notes||''}`);
+  const ics=`BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${start}\nDTEND:${start}\nSUMMARY:CCG: ${job.name}\nLOCATION:${job.address||''}\nDESCRIPTION:${job.company||''} - ${job.contact||''}\nEND:VEVENT\nEND:VCALENDAR`;
+  const blob=new Blob([ics],{type:'text/calendar'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`ccg-${job.name.replace(/\s+/g,'-')}.ics`;a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportExpenses(){
+  const header='Date,Category,Description,Amount\n';
+  const rows=DATA.expenses.map(e=>`${e.date||''},${e.category||''},${(e.description||'').replace(/,/g,' ')},${e.amount||0}`).join('\n');
+  const blob=new Blob([header+rows],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`ccg-expenses-${new Date().getFullYear()}.csv`;a.click();
+  URL.revokeObjectURL(url);
+}
+
+const EXPENSE_CATS=['Mileage','Tools & Equipment','Materials & Supplies','Insurance','Phone','Software & Subscriptions','Fuel','Parking & Tolls','Marketing','Certifications & Training','Meals','Other'];
+
+function openModal(type,data=null){
+  const overlay=document.getElementById('modal-overlay');
+  const content=document.getElementById('modal-content');
+  let html='<div class="modal-handle"></div>';
+  if(type==='job'){
+    html+=`<div class="modal-title">${data?'Edit job':'New job'}</div>
+      <div class="form-group"><label class="form-label">Job name</label><input class="form-input" id="f-name" value="${data?data.name||'':''}"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Company</label><input class="form-input" id="f-company" value="${data?data.company||'':''}"></div>
+        <div class="form-group"><label class="form-label">Contact</label><input class="form-input" id="f-contact" value="${data?data.contact||'':''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Job address</label><input class="form-input" id="f-address" placeholder="e.g. 1598 N High St Columbus OH" value="${data?data.address||'':''}"><div id="mileage-result"></div></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Value</label><input class="form-input" type="number" id="f-value" placeholder="0" value="${data?data.value||'':''}"></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="f-status">
+          ${['lead','quoted','active','complete','archived'].map(s=>`<option value="${s}"${data&&data.status===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="f-date" value="${data?data.date||'':''}"></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="f-notes">${data?data.notes||'':''}</textarea></div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeModal()">Cancel</button>
+        ${data?`<button class="btn-sm success" onclick="addCalendar(${JSON.stringify(data).replace(/"/g,'&quot;')})">📅 Cal</button>`:''}
+        ${data?`<button class="btn-sm danger" onclick="deleteRecord('jobs','${data.id}')">Delete</button>`:''}
+        <button class="btn-sm primary" onclick="saveJob(${data?`'${data.id}'`:null})">Save</button>
+      </div>`;
+  } else if(type==='contact'){
+    const tags=data&&data.tags?data.tags.join(', '):'';
+    html+=`<div class="modal-title">${data?'Edit contact':'New contact'}</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="f-name" value="${data?data.name||'':''}"></div>
+        <div class="form-group"><label class="form-label">Company</label><input class="form-input" id="f-company" value="${data?data.company||'':''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="f-role" value="${data?data.role||'':''}"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" type="tel" id="f-phone" value="${data?data.phone||'':''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="f-email" value="${data?data.email||'':''}"></div>
+      <div class="form-group"><label class="form-label">Tags (comma separated)</label><input class="form-input" id="f-tags" value="${tags}"></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="f-notes">${data?data.notes||'':''}</textarea></div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeModal()">Cancel</button>
+        ${data?`<button class="btn-sm danger" onclick="deleteRecord('contacts','${data.id}')">Delete</button>`:''}
+        <button class="btn-sm primary" onclick="saveContact(${data?`'${data.id}'`:null})">Save</button>
+      </div>`;
+  } else if(type==='quote'){
+    html+=`<div class="modal-title">New quote</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Ref #</label><input class="form-input" id="f-ref" placeholder="CCG-XXXXXX-XXX"></div>
+        <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="f-client"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Job name</label><input class="form-input" id="f-job"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" id="f-amount" placeholder="0.00"></div>
+        <div class="form-group"><label class="form-label">Valid through</label><input class="form-input" type="date" id="f-valid"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeModal()">Cancel</button>
+        <button class="btn-sm primary" onclick="saveQuote()">Save</button>
+      </div>`;
+  } else if(type==='invoice'){
+    html+=`<div class="modal-title">New invoice</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Ref #</label><input class="form-input" id="f-ref" placeholder="CCG-INV-XXX"></div>
+        <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="f-client"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Job name</label><input class="form-input" id="f-job"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" id="f-amount" placeholder="0.00"></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="f-status">
+          <option value="pending">Pending</option><option value="paid">Paid</option><option value="overdue">Overdue</option>
+        </select></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeModal()">Cancel</button>
+        <button class="btn-sm primary" onclick="saveInvoice()">Save</button>
+      </div>`;
+  } else if(type==='expense'){
+    const today=new Date().toISOString().split('T')[0];
+    html+=`<div class="modal-title">Add expense</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="f-date" value="${today}"></div>
+        <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" id="f-amount" placeholder="0.00" step="0.01"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Category</label><select class="form-input" id="f-category">
+        ${EXPENSE_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
+      </select></div>
+      <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="f-description" placeholder="e.g. Pack of rags, Discount Tire, etc."></div>
+      <div id="mileage-exp-section" style="display:none">
+        <div class="form-group"><label class="form-label">Job address (for auto-calc)</label><input class="form-input" id="f-mileage-addr" placeholder="Job site address"><button class="btn-sm" style="margin-top:6px;width:100%" onclick="calcMileageForExpense()">Calculate miles</button><div id="mileage-exp-result"></div></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeModal()">Cancel</button>
+        <button class="btn-sm primary" onclick="saveExpense()">Save</button>
+      </div>`;
+  } else if(type==='reminder'){
+    html+=`<div class="modal-title">New task</div>
+      <div class="form-group"><label class="form-label">Task</label><input class="form-input" id="f-title" value="${data?data.name||'':''}"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Contact</label><input class="form-input" id="f-contact" value="${data?data.contact||'':''}"></div>
+        <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="f-date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Priority</label><select class="form-input" id="f-priority">
+        <option value="today">Today</option><option value="soon">Soon</option><option value="upcoming" selected>Upcoming</option>
+      </select></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="f-notes">${data?data.notes||'':''}</textarea></div>
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeModal()">Cancel</button>
+        <button class="btn-sm primary" onclick="saveReminder()">Save</button>
+      </div>`;
+  }
+  content.innerHTML=html;
+  overlay.classList.add('open');
+  // Show mileage section when category is Mileage
+  const catSel=document.getElementById('f-category');
+  if(catSel){catSel.addEventListener('change',()=>{
+    const sec=document.getElementById('mileage-exp-section');
+    if(sec)sec.style.display=catSel.value==='Mileage'?'block':'none';
+  });}
+}
+
+async function calcMileageForExpense(){
+  const addr=document.getElementById('f-mileage-addr')?.value;
+  const result=document.getElementById('mileage-exp-result');
+  if(!addr||!result)return;
+  result.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px 0">Calculating...</div>';
+  const miles=await getMiles(addr);
+  if(miles){
+    const{roundTrip,cost}=calcMileage(miles);
+    result.innerHTML=`<div class="mileage-result">${roundTrip} miles round trip · ${fmt(cost)} deductible @ $${IRS_RATE}/mi</div>`;
+    const amtInput=document.getElementById('f-amount');
+    if(amtInput)amtInput.value=cost.toFixed(2);
+    const descInput=document.getElementById('f-description');
+    if(descInput)descInput.value=`${roundTrip} mi round trip to ${addr}`;
+  } else {
+    result.innerHTML='<div style="font-size:12px;color:#a32d2d;padding:6px 0">Could not calculate — enter amount manually</div>';
+  }
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+
+async function saveJob(id=null){
+  const obj={name:v('f-name'),company:v('f-company'),contact:v('f-contact'),address:v('f-address'),value:parseFloat(v('f-value'))||0,status:v('f-status'),date:v('f-date')||null,notes:v('f-notes')};
+  if(!obj.name)return;
+  if(id){await sb.from('jobs').update(obj).eq('id',id)}
+  else{await sb.from('jobs').insert(obj)}
+  closeModal();await syncAll();
+}
+
+async function saveContact(id=null){
+  const tags=v('f-tags').split(',').map(t=>t.trim()).filter(Boolean);
+  const obj={name:v('f-name'),company:v('f-company'),role:v('f-role'),phone:v('f-phone'),email:v('f-email'),tags,notes:v('f-notes')};
+  if(!obj.name)return;
+  if(id){await sb.from('contacts').update(obj).eq('id',id)}
+  else{await sb.from('contacts').insert(obj)}
+  closeModal();await syncAll();
+}
+
+async function saveQuote(){
+  const obj={ref:v('f-ref'),client:v('f-client'),job:v('f-job'),amount:parseFloat(v('f-amount'))||0,valid_through:v('f-valid')||null,status:'sent'};
+  await sb.from('quotes').insert(obj);
+  closeModal();await syncAll();
+}
+
+async function saveInvoice(){
+  const obj={ref:v('f-ref'),client:v('f-client'),job:v('f-job'),amount:parseFloat(v('f-amount'))||0,status:v('f-status')};
+  await sb.from('invoices').insert(obj);
+  closeModal();await syncAll();
+}
+
+async function saveExpense(){
+  const obj={date:v('f-date'),amount:parseFloat(v('f-amount'))||0,category:v('f-category'),description:v('f-description')};
+  if(!obj.amount)return;
+  await sb.from('expenses').insert(obj);
+  closeModal();await syncAll();
+}
+
+async function saveReminder(){
+  const obj={title:v('f-title'),contact:v('f-contact'),date:v('f-date')||null,priority:v('f-priority'),notes:v('f-notes')};
+  if(!obj.title)return;
+  await sb.from('reminders').insert(obj);
+  closeModal();await syncAll();
+}
+
+async function deleteRecord(table,id){
+  if(!confirm('Delete this record?'))return;
+  await sb.from(table).delete().eq('id',id);
+  closeModal();await syncAll();
+}
+
+function editRecord(type,id){
+  const map={job:'jobs',contact:'contacts'};
+  const data=DATA[map[type]||type+'s'].find(r=>r.id===id);
+  if(data)openModal(type,data);
+}
+
+function editInvoice(id){
+  const inv=DATA.invoices.find(i=>i.id===id);if(!inv)return;
+  const content=document.getElementById('modal-content');
+  content.innerHTML=`<div class="modal-handle"></div>
+    <div class="modal-title">Edit invoice</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Ref #</label><input class="form-input" id="f-ref" value="${inv.ref||''}"></div>
+      <div class="form-group"><label class="form-label">Client</label><input class="form-input" id="f-client" value="${inv.client||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Job name</label><input class="form-input" id="f-job" value="${inv.job||''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" id="f-amount" value="${inv.amount||0}"></div>
+      <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="f-status">
+        ${['pending','paid','overdue'].map(s=>`<option value="${s}"${inv.status===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm danger" onclick="deleteRecord('invoices','${inv.id}')">Delete</button>
+      <button class="btn-sm primary" onclick="updateInvoice('${inv.id}')">Save</button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+async function updateInvoice(id){
+  const obj={ref:v('f-ref'),client:v('f-client'),job:v('f-job'),amount:parseFloat(v('f-amount'))||0,status:v('f-status')};
+  await sb.from('invoices').update(obj).eq('id',id);
+  closeModal();await syncAll();
+}
+
+function editExpense(id){
+  const e=DATA.expenses.find(e=>e.id===id);if(!e)return;
+  const content=document.getElementById('modal-content');
+  content.innerHTML=`<div class="modal-handle"></div>
+    <div class="modal-title">Edit expense</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="f-date" value="${e.date||''}"></div>
+      <div class="form-group"><label class="form-label">Amount</label><input class="form-input" type="number" id="f-amount" value="${e.amount||0}" step="0.01"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Category</label><select class="form-input" id="f-category">
+      ${EXPENSE_CATS.map(c=>`<option value="${c}"${e.category===c?' selected':''}>${c}</option>`).join('')}
+    </select></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="f-description" value="${e.description||''}"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm danger" onclick="deleteRecord('expenses','${e.id}')">Delete</button>
+      <button class="btn-sm primary" onclick="updateExpense('${e.id}')">Save</button>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+async function updateExpense(id){
+  const obj={date:v('f-date'),amount:parseFloat(v('f-amount'))||0,category:v('f-category'),description:v('f-description')};
+  await sb.from('expenses').update(obj).eq('id',id);
+  closeModal();await syncAll();
+}
+
+function quickReminder(contact){openModal('reminder',{contact})}
+function v(id){return(document.getElementById(id)||{}).value||''}
+
+document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
+
+// Create expenses table if needed
+async function ensureExpensesTable(){
+  try{
+    const{error}=await sb.from('expenses').select('id').limit(1);
+    if(error&&error.code==='42P01'){
+      await sb.rpc('exec_sql',{sql:`create table expenses (id uuid default gen_random_uuid() primary key, date date, amount numeric default 0, category text, description text, created_at timestamp default now()); alter table expenses enable row level security; create policy "Public access" on expenses for all using (true);`});
+    }
+  }catch{}
+}
+
+ensureExpensesTable().then(()=>syncAll());
+</script>
+</body>
+</html>
